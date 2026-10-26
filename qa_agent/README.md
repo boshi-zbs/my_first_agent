@@ -24,4 +24,23 @@
        │
        ├─▶ [ 用例生成模块 ] ──▶ [ 分治法并发请求 ] ──▶ [ Excel 导出 ]
        │
-       └─▶ [ UI 自动化模块 ] ──▶ [ Playwright 探索与执行 ] ──▶ [ 截图回显 ]
+       └─▶ [ UI 自动化模块 ] ──▶ [ Playwright 探索与执行 ] ──▶ [ 截图回显 ]```
+## 快速启动
+1. 环境准备
+建议使用 Python 3.10+。
+# 安装依赖
+pip install -r requirements.txt
+# 安装 Playwright 浏览器内核
+playwright install chromium
+2. 配置环境变量
+复制项目根目录下的 .env.example 并重命名为 .env，填入你的 API Key：
+env
+API_KEY=你的大模型API_KEY
+BOCHA_API_KEY=你的博查搜索API_KEY
+3. 启动后端
+进入 web 目录，启动 FastAPI 服务：
+python api.py
+(服务将运行在 http://127.0.0.1:8000)
+
+4. 启动前端
+直接在浏览器中双击打开 web/index.html 即可使用可视化操作界面。
