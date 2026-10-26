@@ -5,7 +5,7 @@
 __pycache__/
 *.pyc
 *.pyo
-
+*.pyd
 # 虚拟环境
 venv/
 .venv/
@@ -17,3 +17,28 @@ model/agent_logs.json
 # IDE 配置
 .vscode/
 .idea/
+
+# 学习过程的历史文件（不推送）
+/01字典和函数.py
+/02根据工具名调用函数.py
+/03字典重写工具名调用.py
+/04自定义异常.py
+/05工具调用和 JSON 解析.py
+/06上下文记忆.py
+/07上下文记忆整理后.py
+/first_call.py
+
+exports/
+
+# 忽略运行产生的垃圾文件
+qa_agent/exports/
+qa_agent/screenshots/
+screenshots/
+temp_script_*.py
+qa_agent/result.png
+qa_agent/test.docx
+qa_agent/test.pdf
+qa_agent/test_parser.py
+chroma_db/
+qa_agent/chroma_db/
+secret.txt

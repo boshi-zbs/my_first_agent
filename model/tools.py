@@ -1,4 +1,3 @@
-from pathlib import Path
 import ast
 import operator
 from pathlib import Path
@@ -106,4 +105,11 @@ def execute_tool(tool_name:str,arguments:dict)->str:
     arg_name=TOOLS[tool_name]["arg"]
     if arg_name not in arguments:
         raise ToolException(f"工具 {tool_name} 缺少参数：{arg_name}")
+    #高风险操作确认
+    if tool_name=='read_file':
+        path=arguments[arg_name]
+        if "secret" in path.lower() or "password" in path.lower():
+            confirm=input(f"即将读取敏感文件{path},确认吗？(y/n):")
+            if confirm.lower()!='y':
+                return "用户拒绝了此次操作"
     return TOOLS[tool_name]["func"](arguments[arg_name])
