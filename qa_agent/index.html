@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 测试需求分析助手</title>
+    <style>
+        :root { --primary: #4f46e5; --bg: #f3f4f6; --card-bg: #ffffff; --text-main: #1f2937; --text-muted: #6b7280; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text-main); height: 100vh; display: flex; }
+
+        .sidebar { width: 400px; background: var(--card-bg); padding: 24px; border-right: 1px solid #e5e7eb; display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.05); overflow-y: auto; }
+        .logo { font-size: 20px; font-weight: bold; color: var(--primary); margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+
+        .upload-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 12px; background: #f8fafc; }
+        .upload-area:hover { border-color: var(--primary); background: #eef2ff; }
+        .upload-area p { color: var(--text-muted); font-size: 13px; }
+        .file-name { font-size: 13px; color: var(--primary); margin-top: 8px; font-weight: 500; display: none; }
+
+        .feishu-input-group { display: flex; gap: 8px; margin-bottom: 16px; }
+        .feishu-input-group input { flex: 1; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; outline: none; }
+        .feishu-input-group input:focus { border-color: var(--primary); }
+        .feishu-btn { background: #00b96b; color: white; padding: 0 16px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; white-space: nowrap; }
+        .feishu-btn:hover { background: #009e5a; }
+
+        textarea { width: 100%; height: 100px; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; resize: none; font-family: inherit; margin-bottom: 16px; outline: none; font-size: 14px; }
+        textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+
+        button { background: var(--primary); color: white; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        button:hover { background: #4338ca; }
+        button:disabled { background: #9ca3af; cursor: not-allowed; }
+
+        .main-content { flex: 1; padding: 32px; overflow-y: auto; }
+        .empty-state { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); }
+        .empty-state svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.5; }
+
+        .result-grid { display: grid; grid-template-columns: 1fr; gap: 24px; max-width: 900px; margin: 0 auto; }
+        .card { background: var(--card-bg); border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid #f3f4f6; }
+
+        .card-clear .card-title { color: #059669; }
+        .card-ambiguous .card-title { color: #d97706; }
+        .card-rules .card-title { color: #2563eb; }
+        .list-item { display: flex; gap: 12px; margin-bottom: 12px; font-size: 14px; line-height: 1.5; }
+        .list-item::before { content: "•"; color: var(--text-muted); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="logo"><span>🤖</span> AI 测试助手</div>
+
+        <div style="display: flex; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb;">
+            <div id="tab-req" onclick="switchTab('req')" style="flex:1; text-align:center; padding:10px; cursor:pointer; font-weight:bold; color:var(--primary); border-bottom: 2px solid var(--primary);">需求分析</div>
+            <div id="tab-ui" onclick="switchTab('ui')" style="flex:1; text-align:center; padding:10px; cursor:pointer; color:var(--text-muted);">UI 自动化</div>
+        </div>
+
+        <!-- 需求分析模式 -->
+        <div id="panel-req">
+            <div class="feishu-input-group">
+                <input type="text" id="feishu-req-url" placeholder="粘贴飞书文档链接...">
+                <button class="feishu-btn" onclick="feishuAnalyze()">飞书解析</button>
+            </div>
+
+            <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                <p>或上传需求文档 (PDF/Word/Excel)</p>
+                <div class="file-name" id="file-name-display"></div>
+                <input type="file" id="file-input" accept=".txt,.docx,.pdf,.xlsx,.xls" style="display: none;" onchange="handleFileSelect(event)">
+            </div>
+            <textarea id="supplement-text" placeholder="补充说明..."></textarea>
+            <button id="analyze-btn" onclick="startAnalysis()">开始智能拆解</button>
+            <button id="save-memory-btn" style="background: #059669; margin-top: 12px;" onclick="saveToMemory()">保存至企业知识库</button>
+              <!-- 新增的导出按钮 -->
+            <button id="export-excel-btn" style="background: #d97706; margin-top: 12px; display: none;" onclick="exportExcel()">📊 导出为 Excel 测试用例表</button>
+        </div>
+
+        <!-- UI 自动化模式 -->
+        <div id="panel-ui" style="display: none;">
+            <div class="feishu-input-group">
+                <input type="text" id="feishu-ui-url" placeholder="粘贴飞书测试用例链接...">
+                <button class="feishu-btn" onclick="feishuExecute()">飞书执行</button>
+            </div>
+
+            <div class="upload-area" onclick="document.getElementById('ui-file-input').click()">
+                <p>或上传测试用例文档 (PDF/Word/Excel)</p>
+                <div class="file-name" id="ui-file-name-display"></div>
+                <input type="file" id="ui-file-input" accept=".txt,.docx,.pdf,.xlsx,.xls" style="display: none;" onchange="handleUIFileSelect(event)">
+            </div>
+
+            <textarea id="ui-command" style="height: 120px;" placeholder="或者直接粘贴指令&#10;例如：进入 https://www.baidu.com，搜索 'Python教程'"></textarea>
+            <button id="execute-btn" onclick="executeUI()">🚀 执行自动化操作</button>
+        </div>
+    </div>
+
+    <div class="main-content" id="main-content">
+        <div class="empty-state" id="empty-state">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            <p>请在左侧上传文档、粘贴飞书链接，或输入描述</p>
+        </div>
+        <div class="result-grid" id="result-grid" style="display: none;"></div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let uiSelectedFile = null;
+        window.currentData = null;
+
+        function switchTab(tab) {
+            if (tab === 'req') {
+                document.getElementById('panel-req').style.display = 'block';
+                document.getElementById('panel-ui').style.display = 'none';
+                document.getElementById('tab-req').style.color = 'var(--primary)';
+                document.getElementById('tab-req').style.borderBottom = '2px solid var(--primary)';
+                document.getElementById('tab-ui').style.color = 'var(--text-muted)';
+                document.getElementById('tab-ui').style.borderBottom = 'none';
+            } else {
+                document.getElementById('panel-req').style.display = 'none';
+                document.getElementById('panel-ui').style.display = 'block';
+                document.getElementById('tab-ui').style.color = 'var(--primary)';
+                document.getElementById('tab-ui').style.borderBottom = '2px solid var(--primary)';
+                document.getElementById('tab-req').style.color = 'var(--text-muted)';
+                document.getElementById('tab-req').style.borderBottom = 'none';
+            }
+        }
+
+        // --- 需求分析功能 ---
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                selectedFile = file;
+                document.getElementById('file-name-display').textContent = `已选择：${file.name}`;
+                document.getElementById('file-name-display').style.display = 'block';
+            }
+        }
+
+        async function startAnalysis() {
+            const textInput = document.getElementById('supplement-text').value.trim();
+            if (!selectedFile && !textInput) return alert("请上传文件或输入需求描述！");
+
+            const btn = document.getElementById('analyze-btn');
+            btn.disabled = true; btn.textContent = "AI 分析中...";
+
+            const formData = new FormData();
+            if (selectedFile) formData.append("file", selectedFile);
+            formData.append("text", textInput);
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/analyze', { method: 'POST', body: formData });
+                if (!response.ok) { const err = await response.json(); throw new Error(err.detail || "请求失败"); }
+                const data = await response.json();
+                renderResults(data);
+            } catch (error) { alert("分析失败：" + error.message); }
+            finally { btn.disabled = false; btn.textContent = "开始智能拆解"; }
+        }
+
+        async function feishuAnalyze() {
+            const url = document.getElementById('feishu-req-url').value.trim();
+            if (!url) return alert("请输入飞书链接！");
+
+            const btn = document.getElementById('analyze-btn');
+            btn.disabled = true; btn.textContent = "正在读取飞书文档...";
+
+            const formData = new FormData();
+            formData.append("url", url);
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/feishu_analyze', { method: 'POST', body: formData });
+                if (!response.ok) { const err = await response.json(); throw new Error(err.detail || "请求失败"); }
+                const data = await response.json();
+                renderResults(data);
+            } catch (error) { alert("飞书解析失败：" + error.message); }
+            finally { btn.disabled = false; btn.textContent = "开始智能拆解"; }
+        }
+
+        function renderResults(data) {
+            document.getElementById('empty-state').style.display = 'none';
+            const grid = document.getElementById('result-grid');
+            grid.style.display = 'grid';
+            grid.innerHTML = '';
+
+            let clearHtml = createCard('card-clear', '✅ 明确的需求点', data.clear_requirements);
+            clearHtml = clearHtml.replace('</div>\n                </div>',
+                `</div>
+                 <button onclick="generateCode()" style="background:#4f46e5; margin-top: 16px; font-size: 14px; padding: 10px;">🪄 生成 Playwright 脚本</button>
+                </div>`);
+            grid.innerHTML += clearHtml;
+
+            grid.innerHTML += createCard('card-ambiguous', '⚠️ 需求模糊与遗漏点', data.ambiguous_questions);
+            grid.innerHTML += createCard('card-rules', '📋 隐含业务规则', data.business_rules);
+            window.currentData = data;
+
+            // 显示导出按钮
+            document.getElementById('export-excel-btn').style.display = 'flex';
+        }
+
+        function createCard(className, title, items) {
+            if (!items || items.length === 0) return '';
+            let listHtml = ''; items.forEach(item => { listHtml += `<div class="list-item">${item}</div>`; });
+            return `<div class="card ${className}"><div class="card-title">${title} (${items.length})</div><div>${listHtml}</div></div>`;
+        }
+
+        async function generateCode() {
+            if (!window.currentData) return;
+            const testCaseContent = JSON.stringify(window.currentData.clear_requirements);
+            alert("正在为您编写脚本...");
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/generate_code', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ test_case_content: testCaseContent })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    const newWindow = window.open('', '_blank');
+                    newWindow.document.write(`<pre style="background:#1e1e1e; color:#d4d4d4; padding:20px;">${data.code}</pre>`);
+                } else { alert("失败：" + data.detail); }
+            } catch (error) { alert("网络错误"); }
+        }
+
+        async function saveToMemory() {
+            const textInput = document.getElementById('supplement-text').value.trim();
+            if (!selectedFile && !textInput) return alert("请上传文件或输入内容！");
+            const btn = document.getElementById('save-memory-btn');
+            btn.disabled = true; btn.textContent = "保存中...";
+            const formData = new FormData();
+            if (selectedFile) formData.append("file", selectedFile);
+            formData.append("text", textInput);
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/add_memory', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (response.ok) {
+                    alert(data.message);
+                    document.getElementById('supplement-text').value = '';
+                    document.getElementById('file-input').value = '';
+                    document.getElementById('file-name-display').style.display = 'none';
+                    selectedFile = null;
+                } else { throw new Error(data.detail); }
+            } catch (error) { alert("保存失败：" + error.message); }
+            finally { btn.disabled = false; btn.textContent = "保存至企业知识库"; }
+        }
+
+        // --- UI 自动化功能 ---
+        function handleUIFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                uiSelectedFile = file;
+                document.getElementById('ui-file-name-display').textContent = `已选择：${file.name}`;
+                document.getElementById('ui-file-name-display').style.display = 'block';
+            }
+        }
+
+        async function executeUI() {
+            const cmd = document.getElementById('ui-command').value.trim();
+            if (!uiSelectedFile && !cmd) return alert("请输入指令或上传文件！");
+            const btn = document.getElementById('execute-btn');
+            btn.disabled = true; btn.textContent = "AI 生成并执行中...";
+            const formData = new FormData();
+            if (uiSelectedFile) formData.append("file", uiSelectedFile);
+            formData.append("command", cmd);
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/execute_ui', { method: 'POST', body: formData });
+                if (!response.ok) throw new Error("后端执行异常，请检查终端。");
+                const data = await response.json();
+                renderScriptResult(data);
+            } catch (error) { alert("请求失败：" + error.message); }
+            finally { btn.disabled = false; btn.textContent = "🚀 执行自动化操作"; }
+        }
+
+        async function feishuExecute() {
+            const url = document.getElementById('feishu-ui-url').value.trim();
+            if (!url) return alert("请输入飞书链接！");
+            const btn = document.getElementById('execute-btn');
+            btn.disabled = true; btn.textContent = "正在读取飞书并执行...";
+            const formData = new FormData();
+            formData.append("url", url);
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/feishu_execute', { method: 'POST', body: formData });
+                if (!response.ok) throw new Error("后端执行异常，请检查终端。");
+                const data = await response.json();
+                renderScriptResult(data);
+            } catch (error) { alert("请求失败：" + error.message); }
+            finally { btn.disabled = false; btn.textContent = "🚀 执行自动化操作"; }
+        }
+
+        function renderScriptResult(data) {
+            document.getElementById('empty-state').style.display = 'none';
+            const grid = document.getElementById('result-grid');
+            grid.style.display = 'grid';
+            grid.innerHTML = '';
+
+            let htmlContent = `
+                <div class="card">
+                    <div class="card-title" style="color: ${data.status === 'success' ? '#059669' : '#dc2626'};">
+                        ${data.status === 'success' ? '✅ 自动化执行成功' : '❌ 自动化执行报错'}
+                    </div>
+                    <h4 style="margin-top:16px;">生成的脚本代码：</h4>
+                    <pre style="background:#1e1e1e; color:#d4d4d4; padding:16px; border-radius:8px; font-family:monospace; overflow-x:auto; font-size: 13px; margin-bottom: 20px;">${data.code || ''}</pre>
+            `;
+            if (data.status === 'success') {
+                const imgUrl = 'http://127.0.0.1:8000/api/get_screenshot?t=' + new Date().getTime();
+                htmlContent += `<h4 style="margin-bottom:12px;">执行截图：</h4><img src="${imgUrl}" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;" />`;
+            } else {
+                htmlContent += `<h4 style="color:red; margin-bottom:12px;">报错信息：</h4><pre style="color:red; background:#fef2f2; padding:16px; border-radius:8px; overflow-x:auto;">${data.error_msg || data.detail}</pre>`;
+            }
+            htmlContent += `</div>`;
+            grid.innerHTML = htmlContent;
+        }
+         // 新增导出函数
+        async function exportExcel() {
+            // 把我们之前拆解出的“明确需求”和“业务规则”合起来作为生成用例的依据
+            const reqs = window.currentData.clear_requirements.join("\n");
+            const rules = window.currentData.business_rules.join("\n");
+            const fullText = `需求点：\n${reqs}\n\n业务规则：\n${rules}`;
+
+            const btn = document.getElementById('export-excel-btn');
+            btn.disabled = true;
+            btn.textContent = "正在生成 Excel...";
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/generate_excel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requirement_text: fullText })
+                });
+
+                if (!response.ok) throw new Error("生成失败");
+
+                const data = await response.json();
+
+                // 触发浏览器下载
+                const downloadUrl = `http://127.0.0.1:8000/api/download_excel/${data.filename}`;
+                window.location.href = downloadUrl;
+
+            } catch (error) {
+                alert("生成 Excel 失败，请重试。");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "📊 导出为 Excel 测试用例表";
+            }
+        }
+    </script>
+</body>
+</html>
